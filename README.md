@@ -1,83 +1,69 @@
-```
-# Gender Classifier API
 
-A high-performance FastAPI service that predicts the gender of a given name by interfacing with the Genderize.io API. Built as part of a backend engineering task.
+# Data Persistence & Profile API (Stage 1)
 
-## 🚀 Features
-- **Real-time Classification**: Fetches data from Genderize.io.
-- **Confidence Logic**: Automatically flags predictions as confident if probability is ≥ 0.7 and sample size is ≥ 100.
-- **Input Validation**: Strict handling of missing or invalid name parameters.
-- **CORS Enabled**: Configured for cross-origin requests (`Access-Control-Allow-Origin: *`).
-- **Asynchronous**: Built using `async/await` for high concurrency and low latency.
+A robust backend system that aggregates demographic data from three external APIs, persists results in a PostgreSQL database, and provides full CRUD functionality with built-in idempotency.
 
-## 🛠 Tech Stack
+## 🚀 Live Demo
+- **Base URL**: [https://gender-classifier-production.up.railway.app]
+
+## 🛠 Features
+- **Data Persistence**: Uses PostgreSQL to store user profiles, reducing redundant external API calls.
+- **Idempotency**: Automatically detects if a name has already been processed and returns the existing record.
+- **Multi-API Integration**: Concurrently fetches data from:
+  - **Genderize.io**: Gender prediction and probability.
+  - **Agify.io**: Age estimation.
+  - **Nationalize.io**: Nationality/Country probability.
+- **Classification Logic**: 
+  - Groups age into categories (child, teenager, adult, senior).
+  - Determines the most probable country of origin.
+- **UUID v7**: Implements the latest time-ordered UUID standard for primary keys.
+- **Advanced Filtering**: Case-insensitive search by gender, country_id, and age_group.
+
+## 📡 API Endpoints
+
+### 1. Create/Retrieve Profile
+**POST** `/api/profiles`  
+*Body:* `{"name": "ella"}`  
+*Behavior:* Fetches from APIs if new; returns existing record if name is already in DB.
+
+### 2. Get All Profiles
+**GET** `/api/profiles`  
+*Optional Filters:* `?gender=male&country_id=NG&age_group=adult`
+
+### 3. Get Single Profile
+**GET** `/api/profiles/{id}`
+
+### 4. Delete Profile
+**DELETE** `/api/profiles/{id}`
+
+## ⚙️ Tech Stack
 - **Framework:** FastAPI
-- **Server:** Uvicorn
-- **HTTP Client:** HTTPX (Async)
-- **Language:** Python 3.9+
+- **Database:** PostgreSQL (Relational)
+- **ORM:** SQLAlchemy
+- **ID Standard:** UUID v7 (via `uuid6`)
+- **HTTP Client:** HTTPX (Asynchronous)
 
 ## 📥 Installation & Local Setup
 
-1. **Clone the repository:**
+1. **Clone & Navigate:**
    ```bash
    git clone <your-repo-link>
    cd gender-classifier
    ```
 
-2. **Create a virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+2. **Environment Variables:**
+   Create a `.env` file in the root directory:
+   ```text
+   DATABASE_URL=postgresql://user:password@host:port/dbname
    ```
 
-3. **Install dependencies:**
+3. **Install & Run:**
    ```bash
    pip install -r requirements.txt
-   ```
-
-4. **Run the server:**
-   ```bash
    uvicorn main:app --reload
    ```
-   The API will be available at `http://127.0.0.1:8000`.
 
-## 📡 API Usage
-
-### Classify Name
-**Endpoint:** `GET /api/classify`
-
-**Parameters:**
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | string | Yes | The name you want to classify. |
-
-**Example Request:**
-`GET /api/classify?name=peter`
-
-**Success Response (200 OK):**
-```json
-{
-  "status": "success",
-  "data": {
-    "name": "peter",
-    "gender": "male",
-    "probability": 1,
-    "sample_size": 1346866,
-    "is_confident": true,
-    "processed_at": "2026-04-10T14:46:02Z"
-  }
-}
-```
-
-## ⚠️ Error Handling
-All errors return a consistent JSON structure:
-```json
-{
-  "status": "error",
-  "message": "<description of the error>"
-}
-```
+## ⚠️ Error Responses
 - **400 Bad Request**: Missing or empty name.
-- **422 Unprocessable Entity**: Invalid input type.
-- **502 Bad Gateway**: External API (Genderize) failure.
-```
+- **404 Not Found**: Profile ID does not exist.
+- **502 Bad Gateway**: One of the upstream APIs (Agify/Genderize/Nationalize) failed or returned invalid data.
