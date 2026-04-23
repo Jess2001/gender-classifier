@@ -66,7 +66,3 @@ The search engine uses a **Rule-Based Tokenization and Pattern Matching** approa
 - **400**: Missing query parameter or unable to interpret NL query.
 - **422**: Invalid parameter types (e.g., passing text to `min_age`).
 - **404**: Specific profile not found.
-```
-
-***
-
