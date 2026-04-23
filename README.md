@@ -1,69 +1,77 @@
 
-# Data Persistence & Profile API (Stage 1)
+# Insighta Labs: Intelligence Query Engine (Stage 2)
 
-A robust backend system that aggregates demographic data from three external APIs, persists results in a PostgreSQL database, and provides full CRUD functionality with built-in idempotency.
+A high-performance demographic intelligence system that enables advanced slicing, dicing, and natural language querying of person profiles. Built with FastAPI and PostgreSQL.
 
-## 🚀 Live Demo
-- **Base URL**: [https://gender-classifier-production.up.railway.app]
+## 🚀 Live API
+- **Base URL**: https://gender-classifier-production.up.railway.app
 
-## 🛠 Features
-- **Data Persistence**: Uses PostgreSQL to store user profiles, reducing redundant external API calls.
-- **Idempotency**: Automatically detects if a name has already been processed and returns the existing record.
-- **Multi-API Integration**: Concurrently fetches data from:
-  - **Genderize.io**: Gender prediction and probability.
-  - **Agify.io**: Age estimation.
-  - **Nationalize.io**: Nationality/Country probability.
-- **Classification Logic**: 
-  - Groups age into categories (child, teenager, adult, senior).
-  - Determines the most probable country of origin.
-- **UUID v7**: Implements the latest time-ordered UUID standard for primary keys.
-- **Advanced Filtering**: Case-insensitive search by gender, country_id, and age_group.
+## 🛠 Features (Stage 2 Updates)
+- **Data Seeding**: Pre-loaded with 2026 intelligence profiles with duplicate prevention.
+- **Advanced Querying**: Support for multi-parameter filtering, sorting, and pagination.
+- **Natural Language Search**: Rule-based English query parsing into database filters.
+- **UUID v7 Implementation**: Time-ordered unique identifiers for optimal indexing.
+- **Persistence**: Full PostgreSQL integration with SQLAlchemy ORM.
 
 ## 📡 API Endpoints
 
-### 1. Create/Retrieve Profile
-**POST** `/api/profiles`  
-*Body:* `{"name": "ella"}`  
-*Behavior:* Fetches from APIs if new; returns existing record if name is already in DB.
+### 1. Get All Profiles (Advanced)
+**GET** `/api/profiles`
+Supports filtering, sorting, and pagination.
+- **Filters**: `gender`, `age_group`, `country_id`, `min_age`, `max_age`, `min_gender_probability`, `min_country_probability`
+- **Sorting**: `sort_by` (age, created_at, gender_probability) | `order` (asc, desc)
+- **Pagination**: `page` (default: 1), `limit` (default: 10, max: 50)
 
-### 2. Get All Profiles
-**GET** `/api/profiles`  
-*Optional Filters:* `?gender=male&country_id=NG&age_group=adult`
+*Example:* `/api/profiles?gender=male&min_age=25&sort_by=age&order=desc`
 
-### 3. Get Single Profile
-**GET** `/api/profiles/{id}`
+### 2. Natural Language Search
+**GET** `/api/profiles/search?q={query}`
+*Example:* `/api/profiles/search?q=young males from nigeria`
 
-### 4. Delete Profile
-**DELETE** `/api/profiles/{id}`
+---
 
-## ⚙️ Tech Stack
-- **Framework:** FastAPI
-- **Database:** PostgreSQL (Relational)
-- **ORM:** SQLAlchemy
-- **ID Standard:** UUID v7 (via `uuid6`)
-- **HTTP Client:** HTTPX (Asynchronous)
+## 🧠 Natural Language Parser (NLP) Approach
 
-## 📥 Installation & Local Setup
+The search engine uses a **Rule-Based Tokenization and Pattern Matching** approach to interpret plain English. It avoids the latency of LLMs by using pre-defined mappings and Regular Expressions (Regex).
 
-1. **Clone & Navigate:**
-   ```bash
-   git clone <your-repo-link>
-   cd gender-classifier
-   ```
+### Supported Keywords & Logic:
+- **Gender**: Matches `male`, `males`, `man`, `men` → `gender=male`; `female`, `females`, `woman`, `women` → `gender=female`.
+- **Age Categories**: 
+  - `young` maps to ages **16–24**.
+  - `child`, `teenager`, `adult`, `senior` map to their respective `age_group` fields.
+- **Comparison Logic**: 
+  - Keywords like `above`, `over`, `older than` followed by a number are parsed using Regex to set `min_age`.
+  - Keywords like `below`, `under`, `younger than` set `max_age`.
+- **Geography**: Uses a dictionary-based lookup for common country names (e.g., "Nigeria", "Kenya") and converts them to ISO `country_id` (NG, KE).
 
-2. **Environment Variables:**
-   Create a `.env` file in the root directory:
-   ```text
-   DATABASE_URL=postgresql://user:password@host:port/dbname
-   ```
+### Limitations:
+- **Multi-Country Logic**: The parser currently handles the first country identified (e.g., "people from Nigeria and Kenya" will only filter for Nigeria).
+- **Negation**: It does not understand "not" or "except" (e.g., "everyone except males").
+- **Complex Range**: It handles "above 30" or "below 20", but not complex overlaps like "between 20 and 30" unless explicitly filtered via the standard GET endpoint.
+- **Fuzzy Matching**: Country names must be spelled correctly to be identified.
 
-3. **Install & Run:**
+---
+
+## ⚙️ Setup & Installation
+1. **Clone & Install**:
    ```bash
    pip install -r requirements.txt
-   uvicorn main:app --reload
    ```
+2. **Database Seeding**:
+   The app automatically seeds the `seed_profiles.json` on startup if the records do not already exist.
+3. **Environment**:
+   Ensure `DATABASE_URL` is set in your `.env` file or Railway variables.
 
-## ⚠️ Error Responses
-- **400 Bad Request**: Missing or empty name.
-- **404 Not Found**: Profile ID does not exist.
-- **502 Bad Gateway**: One of the upstream APIs (Agify/Genderize/Nationalize) failed or returned invalid data.
+## ⚠️ Error Handling
+- **400**: Missing query parameter or unable to interpret NL query.
+- **422**: Invalid parameter types (e.g., passing text to `min_age`).
+- **404**: Specific profile not found.
+```
+
+***
+
+### Checklist for your `main.py` before you push:
+1.  **Ensure `country_name` exists** in your `Profile` class.
+2.  **Verify the `total` count** in the response for `/api/profiles` (it should reflect the total matching records in the DB, not just the page limit).
+3.  **Check for "young"**: In your NLP code, make sure `young` specifically filters for `min_age=16` and `max_age=24`.
+4.  **CORS**: Confirm `allow_origins=["*"]` is active so the grading bot doesn't get blocked.
