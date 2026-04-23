@@ -70,8 +70,3 @@ The search engine uses a **Rule-Based Tokenization and Pattern Matching** approa
 
 ***
 
-### Checklist for your `main.py` before you push:
-1.  **Ensure `country_name` exists** in your `Profile` class.
-2.  **Verify the `total` count** in the response for `/api/profiles` (it should reflect the total matching records in the DB, not just the page limit).
-3.  **Check for "young"**: In your NLP code, make sure `young` specifically filters for `min_age=16` and `max_age=24`.
-4.  **CORS**: Confirm `allow_origins=["*"]` is active so the grading bot doesn't get blocked.
