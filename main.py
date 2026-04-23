@@ -208,6 +208,7 @@ def serialize_profile(profile: Profile):
         "age": profile.age,
         "age_group": profile.age_group,
         "country_id": profile.country_id,
+        "country_name": profile.country_name,
         "country_probability": profile.country_probability,
         "created_at": profile.created_at.strftime('%Y-%m-%dT%H:%M:%SZ')
     }
@@ -267,11 +268,18 @@ async def nl_search(q: str = Query(...), page: int = 1, limit: int = 10):
     if "young" in q:
         filters["min_age"] = 16
         filters["max_age"] = 24
-
+    for group in ["child", "teenager", "adult", "senior"]:
+        if group in q:
+            filters["age_group"] = group
     # Extracting "above 30" using regex
-    age_match = re.search(r"(?:above|older than)\s+(\d+)", q)
-    if age_match:
-        filters["min_age"] = int(age_match.group(1))
+    above_match = re.search(r"(?:above|older than|over|greater than)\s*(\d+)", q)
+    if above_match:
+        filters["min_age"] = int(above_match.group(1))
+        
+    # Optional: Add below logic to be safe
+    below_match = re.search(r"(?:below|under|younger than|less than)\s*(\d+)", q)
+    if below_match:
+        filters["max_age"] = int(below_match.group(1))
 
     # Country mapping (Simplified example)
     countries = {"nigeria": "NG", "kenya": "KE", "angola": "AO", "ghana": "GH"}
@@ -325,7 +333,8 @@ async def get_profiles(
     try:
         return await fetch_profiles_from_db(
             db, gender, age_group, country_id, 
-            min_age, max_age, sort_by, order, page, limit
+            min_age, max_age, sort_by, order, page, limit,
+            min_gender_probability, min_country_probability
         )
     finally:
         db.close()
